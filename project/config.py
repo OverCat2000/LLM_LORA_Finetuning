@@ -3,8 +3,8 @@ from dataclasses import asdict, dataclass
 
 @dataclass
 class Config:
-    # data_dir: str = "/workspace/data/fineweb_2.5B"
-    data_dir: str = "./data/data/fineweb_2.5B"
+    data_dir: str = "/workspace/data/fineweb_2.5B"
+    # data_dir: str = "./data/data/fineweb_2.5B"
     seq_len: int = 1024
     batch_size: int = 8
     grad_accum_steps: int = 4

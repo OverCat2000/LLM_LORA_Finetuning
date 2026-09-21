@@ -38,7 +38,7 @@ PREFIX = os.environ.get("DATA_PREFIX", "fineweb_2.5B")
 REGION = os.environ.get("AWS_REGION", "us-east-1")
 
 # Vast.ai containers usually have a big volume at /workspace and a small root fs.
-LOCAL_DIR = Path(os.environ.get("DATA_DIR", "./data/fineweb_2.5B"))
+LOCAL_DIR = Path(os.environ.get("DATA_DIR", "/workspace/data/fineweb_2.5B"))
 
 # Files downloaded in parallel; each file also uses multipart threads internally.
 MAX_PARALLEL_FILES = 4
