@@ -13,7 +13,7 @@ def _s3():
     return boto3.client("s3", region_name=os.environ.get("AWS_REGION", "us-east-1"))
 
 
-def save(cfg, model, optimizer, step, val_loss, tag=None):
+def save(cfg, model, optimizer, step, val_loss, tag=None, run_id=""):
     out_dir = Path(cfg.out_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
     name = f"ckpt_{tag}.pt" if tag else f"ckpt_{step:07d}.pt"
@@ -26,6 +26,7 @@ def save(cfg, model, optimizer, step, val_loss, tag=None):
             "model": unwrap(model).state_dict(),
             "optimizer": optimizer.state_dict(),
             "config": cfg.to_dict(),
+            "run_id": run_id,
         },
         path,
     )
@@ -101,4 +102,4 @@ def load(path, model, optimizer=None, device="cuda"):
     if optimizer is not None:
         optimizer.load_state_dict(ckpt["optimizer"])
     print(f"resumed {path} at step {ckpt['step']:,}")
-    return ckpt["step"]
+    return ckpt["step"], ckpt.get("run_id", "")

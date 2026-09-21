@@ -6,9 +6,8 @@ from dotenv import load_dotenv
 
 import checkpoint
 from config import Config
-
-# from fineweb_dataset_clean import make_loader
 from torch_dataloader import make_loader
+from logger import make_logger
 from model import build_model
 from optim import configure_optimizer
 from training_loop import Trainer
@@ -57,15 +56,17 @@ def main():
 
     optimizer = configure_optimizer(model, cfg)
 
-    start_step = 0
+    start_step, resume_id = 0, ""
     path = checkpoint.resolve(cfg)
     if path:
-        start_step = checkpoint.load(path, model, optimizer, cfg.device)
+        start_step, resume_id = checkpoint.load(path, model, optimizer, cfg.device)
+
+    logger = make_logger(cfg, resume_id)
 
     if cfg.compile:
         model = torch.compile(model)
 
-    Trainer(cfg, model, optimizer, train_loader, val_loader, start_step).fit()
+    Trainer(cfg, model, optimizer, train_loader, val_loader, logger, start_step).fit()
 
 
 if __name__ == "__main__":

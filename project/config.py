@@ -4,7 +4,6 @@ from dataclasses import asdict, dataclass
 @dataclass
 class Config:
     data_dir: str = "/workspace/data/fineweb_2.5B"
-    # data_dir: str = "./data/data/fineweb_2.5B"
     seq_len: int = 1024
     batch_size: int = 8
     grad_accum_steps: int = 4
@@ -31,9 +30,17 @@ class Config:
     ckpt_every: int = 1000
     keep_last: int = 3
     out_dir: str = "/workspace/checkpoints"
-    s3_bucket: str = ""
+
+    s3_bucket: str = "my-fineweb-2-5b-data-f212ca8d"
     s3_prefix: str = "checkpoints"
     resume: str = ""
+
+    tracker: str = "none"
+    run_name: str = "gpt124m"
+    log_dir: str = "/workspace/runs"
+    wandb_project: str = "gpt-pretrain"
+    mlflow_uri: str = ""
+    experiment: str = "gpt-pretrain"
 
     device: str = "cuda"
     compile: bool = True

@@ -14,11 +14,14 @@ def infinite(loader):
 
 
 class Trainer:
-    def __init__(self, cfg, model, optimizer, train_loader, val_loader, start_step=0):
+    def __init__(
+        self, cfg, model, optimizer, train_loader, val_loader, logger, start_step=0
+    ):
         self.cfg = cfg
         self.model = model
         self.optimizer = optimizer
         self.val_loader = val_loader
+        self.logger = logger
         self.batches = infinite(train_loader)
         self.step = start_step
         self.best_val = float("inf")
@@ -68,9 +71,11 @@ class Trainer:
 
     def fit(self):
         cfg = self.cfg
+        self.logger.log_params(cfg.to_dict())
         print(
             f"training step {self.step:,} -> {cfg.max_steps:,}, {cfg.tokens_per_step:,} tokens/step"
         )
+
         t0 = time.time()
         running = 0.0
 
@@ -84,6 +89,19 @@ class Trainer:
                 avg = running / cfg.log_every
                 tok_s = cfg.log_every * cfg.tokens_per_step / dt
                 eta = (cfg.max_steps - self.step) * dt / cfg.log_every / 3600
+
+                metrics = {
+                    "train/loss": avg,
+                    "train/ppl": math.exp(min(avg, 20)),
+                    "train/lr": lr,
+                    "perf/tok_per_s": tok_s,
+                }
+                if cfg.device.startswith("cuda"):
+                    metrics["perf/gpu_mem_gb"] = (
+                        torch.cuda.max_memory_allocated() / 1024**3
+                    )
+                self.logger.log(metrics, self.step)
+
                 print(
                     f"step {self.step:>7,}  loss {avg:.4f}  ppl {math.exp(min(avg, 20)):>8.1f}  "
                     f"lr {lr:.2e}  {tok_s / 1e3:.1f}k tok/s  eta {eta:.1f}h",
@@ -94,20 +112,49 @@ class Trainer:
 
             if self.step % cfg.eval_every == 0:
                 val = self.evaluate()
+                self.logger.log(
+                    {"val/loss": val, "val/ppl": math.exp(min(val, 20))}, self.step
+                )
                 if val < self.best_val:
                     self.best_val = val
                     checkpoint.save(
-                        cfg, self.model, self.optimizer, self.step, val, tag="best"
+                        cfg,
+                        self.model,
+                        self.optimizer,
+                        self.step,
+                        val,
+                        tag="best",
+                        run_id=self.logger.run_id,
                     )
+                    if cfg.s3_bucket:
+                        self.logger.set_tag(
+                            "best_ckpt",
+                            f"s3://{cfg.s3_bucket}/{cfg.s3_prefix}/ckpt_best.pt",
+                        )
                 print(f"  eval {self.step:,} val {val:.4f}", flush=True)
                 t0 = time.time()
 
             if self.step % cfg.ckpt_every == 0:
                 checkpoint.save(
-                    cfg, self.model, self.optimizer, self.step, self.best_val
+                    cfg,
+                    self.model,
+                    self.optimizer,
+                    self.step,
+                    self.best_val,
+                    run_id=self.logger.run_id,
                 )
                 t0 = time.time()
 
         val = self.evaluate()
-        checkpoint.save(cfg, self.model, self.optimizer, self.step, val, tag="final")
+        checkpoint.save(
+            cfg,
+            self.model,
+            self.optimizer,
+            self.step,
+            val,
+            tag="final",
+            run_id=self.logger.run_id,
+        )
+        self.logger.log({"val/loss": val}, self.step)
+        self.logger.close()
         print(f"done: final val {val:.4f}, best {self.best_val:.4f}")
